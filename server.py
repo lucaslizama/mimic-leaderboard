@@ -52,6 +52,7 @@ CORS_ORIGIN = os.environ.get("CORS_ORIGIN", "*")
 RATE_LIMIT = int(os.environ.get("RATE_LIMIT", "20"))
 RATE_WINDOW = int(os.environ.get("RATE_WINDOW", "600"))
 MAX_NAME_LEN = int(os.environ.get("MAX_NAME_LEN", "16"))
+KEEP_PER_PLAYER = int(os.environ.get("KEEP_PER_PLAYER", "10"))  # per-name retention (see _submit)
 
 # Sanity bounds so a malformed/hostile client can't store absurd values.
 MAX_SCORE = 100_000_000
@@ -87,6 +88,7 @@ def init_db() -> None:
         )
         conn.execute("CREATE INDEX IF NOT EXISTS idx_time ON scores(reached_goal, time_ms)")
         conn.execute("CREATE INDEX IF NOT EXISTS idx_score ON scores(score DESC)")
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_name ON scores(name)")
         conn.commit()
     finally:
         conn.close()
@@ -241,6 +243,19 @@ class Handler(BaseHTTPRequestHandler):
                 "INSERT INTO scores (name, score, time_ms, reached_goal, created_at) VALUES (?,?,?,?,?)",
                 (name, score, time_ms, reached_goal, created),
             ).lastrowid
+            # Per-player retention: keep only the union of this name's top-N
+            # scores and top-N fastest wins, so one player can't flood the
+            # board (a just-submitted run below both cutoffs is pruned at once).
+            conn.execute(
+                """
+                DELETE FROM scores WHERE name = ?
+                  AND id NOT IN (SELECT id FROM scores WHERE name = ?
+                                 ORDER BY score DESC, time_ms ASC LIMIT ?)
+                  AND id NOT IN (SELECT id FROM scores WHERE name = ? AND reached_goal = 1
+                                 ORDER BY time_ms ASC LIMIT ?)
+                """,
+                (name, name, KEEP_PER_PLAYER, name, KEEP_PER_PLAYER),
+            )
             time_rank = None
             if reached_goal:
                 time_rank = conn.execute(

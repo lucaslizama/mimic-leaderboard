@@ -91,6 +91,17 @@ Response: `{"ok": true, "id": 42, "time_rank": 3, "score_rank": 5}`
 | `RATE_LIMIT` | `20` | Max submits per client IP per window |
 | `RATE_WINDOW` | `600` | Rate-limit window in seconds |
 | `MAX_NAME_LEN` | `16` | Max characters kept from a name |
+| `KEEP_PER_PLAYER` | `10` | Per-name retention: top-N kept on each board (see below) |
+
+### Per-player retention
+
+After every submit, the server prunes that player's rows down to the **union**
+of their top-`KEEP_PER_PLAYER` scores and their top-`KEEP_PER_PLAYER` fastest
+goal-reaching times — so one prolific player can't flood the boards, and the
+database stays tiny forever. A just-submitted run that doesn't make either of
+the player's personal top-10 cuts is pruned immediately; that's expected (the
+returned `time_rank`/`score_rank` still tell the client where it *would* have
+placed).
 
 ## Security — read this
 
