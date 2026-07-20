@@ -1,0 +1,23 @@
+# systemd unit for the Mimic! leaderboard server.
+# Install:  sudo cp deploy/leaderboard.service /etc/systemd/system/
+#           sudo systemctl daemon-reload && sudo systemctl enable --now leaderboard
+[Unit]
+Description=Mimic! Leaderboard
+After=network.target
+
+[Service]
+Type=simple
+User=leaderboard
+WorkingDirectory=/opt/mimic-leaderboard
+Environment=PORT=8080
+Environment=DB_PATH=/var/lib/mimic-leaderboard/leaderboard.db
+# Uncomment to require a shared key on submissions (soft spam gate):
+# Environment=GAME_KEY=change-me
+# Lock CORS to your game's origin instead of the "*" default:
+# Environment=CORS_ORIGIN=https://your-game-url.example
+ExecStart=/usr/bin/python3 /opt/mimic-leaderboard/server.py
+Restart=on-failure
+RestartSec=3
+
+[Install]
+WantedBy=multi-user.target

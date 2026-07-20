@@ -1,0 +1,7 @@
+# Caddy reverse proxy with automatic HTTPS (Let's Encrypt).
+# Replace the domain below with yours, point its DNS A record at this host, then:
+#   sudo cp deploy/Caddyfile /etc/caddy/Caddyfile && sudo systemctl restart caddy
+# Caddy obtains and renews the TLS certificate for you.
+leaderboard.example.com {
+	reverse_proxy localhost:8080
+}

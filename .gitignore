@@ -1,0 +1,10 @@
+# SQLite data — never commit the leaderboard database
+*.db
+*.db-wal
+*.db-shm
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
