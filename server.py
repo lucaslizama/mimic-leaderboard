@@ -30,6 +30,8 @@ API:
              sort=time  (default) fastest run to the prize, ascending; only runs
                         that reached the goal (reached_goal=true) qualify.
              sort=score highest score, descending; every run counts.
+             name=AAA   optional: only that player's runs (e.g. limit=1 for
+                        their personal best on the chosen board).
     POST /submit                           -> {"ok":true,"id":N,"time_rank":R,...}
              body: {"name":"AAA","score":18500,"time_ms":161000,"reached_goal":true}
 """
@@ -150,12 +152,12 @@ class Handler(BaseHTTPRequestHandler):
     def do_GET(self) -> None:
         path = urlparse(self.path).path
         if path == "/health":
-            return self._json(200, {"status": "ok", "service": "mimic-leaderboard", "version": 1})
+            return self._json(200, {"status": "ok", "service": "mimic-leaderboard", "version": 2})
         if path == "/":
             return self._json(200, {
                 "service": "mimic-leaderboard",
-                "version": 1,
-                "endpoints": ["/health", "/leaderboard?sort=time|score&limit=N", "/submit (POST)"],
+                "version": 2,
+                "endpoints": ["/health", "/leaderboard?sort=time|score&limit=N&name=PLAYER", "/submit (POST)"],
             })
         if path == "/leaderboard":
             return self._leaderboard(parse_qs(urlparse(self.path).query))
@@ -174,21 +176,24 @@ class Handler(BaseHTTPRequestHandler):
         except ValueError:
             limit = 20
         limit = max(1, min(limit, 100))
+        name = sanitize_name(q.get("name", [""])[0])  # optional per-player filter
 
         conn = db()
         try:
             if sort == "score":
                 rows = conn.execute(
                     "SELECT name, score, time_ms, reached_goal, created_at "
-                    "FROM scores ORDER BY score DESC, time_ms ASC LIMIT ?",
-                    (limit,),
+                    "FROM scores" + (" WHERE name = ?" if name else "") +
+                    " ORDER BY score DESC, time_ms ASC LIMIT ?",
+                    (name, limit) if name else (limit,),
                 ).fetchall()
             else:  # "time" board: only completed runs, fastest first
                 sort = "time"
                 rows = conn.execute(
                     "SELECT name, score, time_ms, reached_goal, created_at "
-                    "FROM scores WHERE reached_goal=1 ORDER BY time_ms ASC LIMIT ?",
-                    (limit,),
+                    "FROM scores WHERE reached_goal=1" + (" AND name = ?" if name else "") +
+                    " ORDER BY time_ms ASC LIMIT ?",
+                    (name, limit) if name else (limit,),
                 ).fetchall()
         finally:
             conn.close()
