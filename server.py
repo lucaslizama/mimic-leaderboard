@@ -130,6 +130,8 @@ class Handler(BaseHTTPRequestHandler):
     def _json(self, code: int, payload: dict) -> None:
         body = json.dumps(payload).encode("utf-8")
         self.send_response(code)
+        if self.close_connection:
+            self.send_header("Connection", "close")
         self.send_header("Content-Type", "application/json")
         self.send_header("Content-Length", str(len(body)))
         self._cors()
@@ -209,19 +211,27 @@ class Handler(BaseHTTPRequestHandler):
         return self._json(200, {"sort": sort, "count": len(entries), "entries": entries})
 
     def _submit(self) -> None:
+        # Drain the request body BEFORE any early return. On a keep-alive
+        # connection, unread body bytes get parsed as the next "request" and
+        # answered with a 501/400 that carries no CORS headers — a reverse
+        # proxy then hands that poisoned response to an unrelated browser
+        # call, which surfaces as a mystery CORS error client-side.
+        try:
+            length = int(self.headers.get("Content-Length", "0"))
+        except ValueError:
+            length = 0
+        if not (0 < length <= 4096):
+            self.close_connection = True  # body absent or too big to drain safely
+            return self._json(400, {"ok": False, "error": "empty or oversized body"})
+        raw = self.rfile.read(length)
+
         if GAME_KEY and self.headers.get("X-Game-Key", "") != GAME_KEY:
             return self._json(403, {"ok": False, "error": "bad or missing game key"})
         if not rate_ok(self._client_ip()):
             return self._json(429, {"ok": False, "error": "rate limited"})
 
         try:
-            length = int(self.headers.get("Content-Length", "0"))
-        except ValueError:
-            length = 0
-        if not (0 < length <= 4096):
-            return self._json(400, {"ok": False, "error": "empty or oversized body"})
-        try:
-            data = json.loads(self.rfile.read(length).decode("utf-8"))
+            data = json.loads(raw.decode("utf-8"))
         except (ValueError, UnicodeDecodeError):
             return self._json(400, {"ok": False, "error": "invalid JSON"})
         if not isinstance(data, dict):
