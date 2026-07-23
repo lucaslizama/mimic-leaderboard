@@ -73,7 +73,9 @@ Body (JSON):
 
 - `name` — string, trimmed/sanitized, capped at `MAX_NAME_LEN` (16).
 - `score` — integer, `0 … 100000000`.
-- `time_ms` — integer milliseconds, `1 … 86400000` (24h).
+- `time_ms` — integer milliseconds, `1 … 86400000` (24h). Runs claiming
+  `reached_goal` must also be at least `MIN_WIN_TIME_MS` (60s by default) —
+  faster "wins" are rejected as implausible.
 - `reached_goal` — bool; `true` means the run banked the prize (qualifies for the
   time board).
 
@@ -92,6 +94,7 @@ Response: `{"ok": true, "id": 42, "time_rank": 3, "score_rank": 5}`
 | `RATE_WINDOW` | `600` | Rate-limit window in seconds |
 | `MAX_NAME_LEN` | `16` | Max characters kept from a name |
 | `KEEP_PER_PLAYER` | `10` | Per-name retention: top-N kept on each board (see below) |
+| `MIN_WIN_TIME_MS` | `60000` | Fastest believable prize win; faster `reached_goal` submits are rejected |
 
 ### Per-player retention
 
