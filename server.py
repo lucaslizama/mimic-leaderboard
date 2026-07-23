@@ -22,10 +22,12 @@ Configuration (all optional, via environment variables):
     RATE_LIMIT    Max submits per client IP per window (default 20).
     RATE_WINDOW   Rate-limit window, seconds (default 600).
     MAX_NAME_LEN  Max characters kept from a submitted name (default 16).
-    MIN_WIN_TIME_MS  Fastest believable prize win, ms (default 60000). Submissions
+    MIN_WIN_TIME_MS  Fastest believable prize win, ms (default 30000). Submissions
                   claiming reached_goal faster than this are rejected — a debug
                   build or tampered client can otherwise land an unbeatable
-                  sub-second "win" on top of the time board.
+                  sub-second "win" on top of the time board. Keep a healthy
+                  margin below the current world record: top runs land around
+                  50s, so 30s blocks garbage without ever rejecting real play.
 
 API:
     GET  /                                 -> service info + endpoint list
@@ -63,9 +65,9 @@ KEEP_PER_PLAYER = int(os.environ.get("KEEP_PER_PLAYER", "10"))  # per-name reten
 # Sanity bounds so a malformed/hostile client can't store absurd values.
 MAX_SCORE = 100_000_000
 MAX_TIME_MS = 24 * 60 * 60 * 1000  # a run longer than 24h is not a real run
-# Banking the prize takes minutes of real slicing; even a perfect run can't do
-# it in under a minute. Anything faster is a debug/tampered client.
-MIN_WIN_TIME_MS = int(os.environ.get("MIN_WIN_TIME_MS", "60000"))
+# Banking the prize takes real slicing through every stage; record runs land
+# around 50s, so anything under half a minute is a debug/tampered client.
+MIN_WIN_TIME_MS = int(os.environ.get("MIN_WIN_TIME_MS", "30000"))
 
 _CONTROL = re.compile(r"[\x00-\x1f\x7f]")  # strip control chars from names
 _rate: dict[str, list[float]] = {}
