@@ -11,7 +11,8 @@ SQLite file you fully control.
 
 This is the game's "Stop Killing Games" end-of-life plan: if the official server
 ever goes away, anyone can run this and point their client at it. The protocol is
-open and the whole server is one readable file, licensed MIT (see LICENSE).
+open and the whole server is one readable file, source-available under the
+PolyForm Noncommercial License 1.0.0 (see LICENSE).
 
 Configuration (all optional, via environment variables):
     PORT          Port to listen on (default 8080; cloud hosts usually set this).

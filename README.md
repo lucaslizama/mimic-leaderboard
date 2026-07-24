@@ -190,4 +190,5 @@ you attach durable storage.
 
 ## License
 
-MIT — see [LICENSE](LICENSE). Host it, fork it, keep it alive.
+PolyForm Noncommercial 1.0.0 — see [LICENSE](LICENSE). Host it, fork it,
+keep it alive — just don't sell it.
